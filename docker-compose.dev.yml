@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: stripe
+      POSTGRES_USER: stripe
+      POSTGRES_PASSWORD: stripe
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web:
+    build: .
+    volumes:
+      - .:/app
+      - /app/.venv
+    ports:
+      - "8000:8000"
+    working_dir: /app/stripe_demo
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: 127.0.0.1,localhost
+      APP_DOMAIN: http://127.0.0.1:8000
+      DATABASE_URL: postgres://stripe:stripe@db:5432/stripe
+      DJANGO_SECRET_KEY: dev-secret
+
+      STRIPE_PUBLIC_KEY_USD: ${STRIPE_PUBLIC_KEY_USD}
+      STRIPE_SECRET_KEY_USD: ${STRIPE_SECRET_KEY_USD}
+      STRIPE_PUBLIC_KEY_EUR: ${STRIPE_PUBLIC_KEY_EUR}
+      STRIPE_SECRET_KEY_EUR: ${STRIPE_SECRET_KEY_EUR}
+
+    command: >
+      bash -lc "
+        uv run python manage.py migrate &&
+        uv run python manage.py runserver 0.0.0.0:8000
+      "
+
+volumes:
+  pgdata:
