@@ -1,0 +1,32 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Buy {{ item.name }}</title>
+  </head>
+  <body>
+    <h1>{{ item.name }}</h1>
+    <p>{{ item.description }}</p>
+    <p><b>Price:</b> {{ item.price }} (minor units), {{ item.currency|upper }}</p>
+
+    <button id="buy-button">Buy</button>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+      const stripe = Stripe("{{ stripe_public_key }}");
+      const buyButton = document.getElementById("buy-button");
+
+      buyButton.addEventListener("click", async () => {
+        const resp = await fetch("/buy/{{ item.id }}/", { method: "GET" });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          alert(data.error || "Failed to create checkout session");
+          return;
+        }
+
+        const result = await stripe.redirectToCheckout({ sessionId: data.id });
+        if (result.error) alert(result.error.message);
+      });
+    </script>
+  </body>
+</html>
