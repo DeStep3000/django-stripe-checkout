@@ -10,4 +10,5 @@ dependencies = [
     "psycopg[binary]>=3.3.2",
     "python-dotenv>=1.2.1",
     "stripe>=14.1.0",
+    "whitenoise>=6.11.0",
 ]
