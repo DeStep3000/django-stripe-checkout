@@ -8,9 +8,8 @@ class Item(models.Model):
         ("eur", "EUR"),
     ]
 
-    name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    # цена в минимальных единицах: 1111 == $11.11 для USD
+    name = models.CharField(max_length=200, blank=False)
+    description = models.TextField(blank=False)
     price = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     currency = models.CharField(
         max_length=3, choices=CURRENCY_CHOICES, default="usd")
