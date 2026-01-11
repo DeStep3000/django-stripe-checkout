@@ -14,7 +14,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock ./
 
 # 3. Устанавливаем зависимости через uv
-RUN uv sync --frozen
+ENV UV_HTTP_TIMEOUT=180
+ENV UV_HTTP_RETRIES=10
+RUN uv sync
 
 # 4. Копируем код проекта
 COPY . .
