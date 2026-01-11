@@ -1,0 +1,62 @@
+name: "🚀 Django Stripe Checkout"
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "📂 Checkout (metadata only)"
+        uses: actions/checkout@v4
+
+      - name: "🔐 SSH deploy"
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            DEPLOY_DIR="${{ secrets.DEPLOY_DIR }}"
+
+            echo "Deploying to: $DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            # --- Обновляем код до последнего коммита main ---
+            git fetch --all --prune
+            git checkout main
+            git reset --hard origin/main
+
+            # --- Создаём/перезаписываем .env из GitHub Secrets ---
+            cat > .env << 'EOF'
+            DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            DJANGO_DEBUG=0
+            DJANGO_ALLOWED_HOSTS=${{ secrets.DJANGO_ALLOWED_HOSTS }}
+            APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+
+            STRIPE_PUBLIC_KEY_USD=${{ secrets.STRIPE_PUBLIC_KEY_USD }}
+            STRIPE_SECRET_KEY_USD=${{ secrets.STRIPE_SECRET_KEY_USD }}
+            STRIPE_PUBLIC_KEY_EUR=${{ secrets.STRIPE_PUBLIC_KEY_EUR }}
+            STRIPE_SECRET_KEY_EUR=${{ secrets.STRIPE_SECRET_KEY_EUR }}
+            EOF
+
+            # --- Деплой через Makefile ---
+            make build
+            make up
+
+            # --- Показать статус/логи (коротко) ---
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
