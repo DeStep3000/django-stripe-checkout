@@ -27,6 +27,8 @@ services:
       - .env
     expose:
       - "8000"
+    ports:
+      - "8000:8000"
     environment:
       DJANGO_DEBUG: "0"
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}

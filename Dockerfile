@@ -12,8 +12,7 @@ COPY pyproject.toml uv.lock ./
 ENV UV_HTTP_TIMEOUT=180
 ENV UV_HTTP_RETRIES=10
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+RUN uv sync --frozen
 
 COPY . .
 
