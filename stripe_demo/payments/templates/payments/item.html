@@ -12,21 +12,36 @@
 
     <script src="https://js.stripe.com/v3/"></script>
     <script>
-      const stripe = Stripe("{{ stripe_public_key }}");
-      const buyButton = document.getElementById("buy-button");
+    const stripe = Stripe("{{ stripe_public_key }}");
 
-      buyButton.addEventListener("click", async () => {
-        const resp = await fetch("/buy/{{ item.id }}/", { method: "GET" });
-        const data = await resp.json();
+    document.getElementById("buy-button").addEventListener("click", async () => {
+      try {
+        const resp = await fetch("/buy/{{ item.id }}/");
+
+        let data;
+        if (resp.headers.get("content-type")?.includes("application/json")) {
+          data = await resp.json();
+        } else {
+          throw new Error("Server returned non-JSON response");
+        }
 
         if (!resp.ok) {
-          alert(data.error || "Failed to create checkout session");
+          alert(data.error || "Buy failed");
           return;
         }
 
-        const result = await stripe.redirectToCheckout({ sessionId: data.id });
-        if (result.error) alert(result.error.message);
-      });
-    </script>
+        const result = await stripe.redirectToCheckout({
+          sessionId: data.id,
+        });
+
+        if (result.error) {
+          alert(result.error.message);
+        }
+
+      } catch (e) {
+        alert(e.message || e);
+      }
+    });
+  </script>
   </body>
 </html>
