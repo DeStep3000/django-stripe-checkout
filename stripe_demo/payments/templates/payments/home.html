@@ -1,0 +1,47 @@
+{% extends "payments/base.html" %}
+
+{% block title %}Stripe Checkout Demo{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-2">Stripe Checkout Demo</h1>
+
+        <p class="text-muted">
+          Demo project showing Stripe Checkout integration with Django.
+        </p>
+
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+          <a href="/admin/" class="btn btn-dark">
+            Go to Admin
+          </a>
+        </div>
+
+        <h2 class="h6 text-muted mb-2">Test items</h2>
+
+        <div class="list-group">
+          {% for item in items %}
+          <a href="/item/{{ item.id }}/"
+             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <div class="small text-muted">{{ item.description }}</div>
+            </div>
+            <span class="badge text-bg-secondary">
+              {{ item.currency|upper }} {{ item.price }}
+            </span>
+          </a>
+          {% empty %}
+          <div class="list-group-item text-muted">
+            No items available
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
