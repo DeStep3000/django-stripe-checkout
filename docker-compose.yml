@@ -72,7 +72,7 @@ services:
       bash -lc "
         uv run python manage.py migrate &&
         uv run python manage.py collectstatic --noinput &&
-        uv run gunicorn stripe_demo.wsgi:application --bind 0.0.0.0:8001 --timeout 120
+        uv run gunicorn stripe_demo.wsgi:application --bind 0.0.0.0:8001 --timeout 120 --access-logfile - --error-logfile - --log-level debug
       "
     network_mode: "service:vpn"
 
