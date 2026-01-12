@@ -1,36 +1,96 @@
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Order #{{ order.id }}</title>
-  </head>
-  <body>
-    <h1>Order #{{ order.id }}</h1>
+{% extends "payments/base.html" %}
 
-    <ul>
-      {% for oi in order.items.all %}
-        <li>{{ oi.item.name }} — x{{ oi.quantity }} ({{ oi.item.price }} {{ oi.item.currency|upper }})</li>
-      {% endfor %}
-    </ul>
+{% block title %}Order #{{ order.id }}{% endblock %}
 
-    <button id="buy-order-button">Pay order</button>
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <h1 class="h4 mb-0">Order #{{ order.id }}</h1>
+          <span class="badge rounded-pill text-bg-dark">{{ currency|upper }}</span>
+        </div>
 
-    <script src="https://js.stripe.com/v3/"></script>
-    <script>
-      const stripe = Stripe("{{ stripe_public_key }}");
-      const btn = document.getElementById("buy-order-button");
+        <hr class="my-3"/>
 
-      btn.addEventListener("click", async () => {
-        const resp = await fetch("/buy-order/{{ order.id }}/", { method: "GET" });
-        const data = await resp.json();
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="text-end">Unit (minor)</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for oi in order.items.all %}
+              <tr>
+                <td class="fw-semibold">{{ oi.item.name }}</td>
+                <td class="text-end">{{ oi.item.price }}</td>
+                <td class="text-end">{{ oi.quantity }}</td>
+                <td class="text-end">{{ oi.item.price|add:"0" }} × {{ oi.quantity }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-muted">Order is empty</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
 
-        if (!resp.ok) {
-          alert(data.error || "Failed to create checkout session for order");
-          return;
-        }
+        <div class="d-flex gap-2 mt-3">
+          <button id="buy-order-button" class="btn btn-primary btn-lg flex-grow-1">
+            Pay order
+          </button>
+          <a class="btn btn-outline-secondary btn-lg" href="/admin/payments/order/{{ order.id }}/change/">
+            Edit
+          </a>
+        </div>
 
-        const result = await stripe.redirectToCheckout({ sessionId: data.id });
-        if (result.error) alert(result.error.message);
-      });
-    </script>
-  </body>
-</html>
+        <div id="error-box" class="alert alert-danger mt-3 d-none" role="alert"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  const stripe = Stripe("{{ stripe_public_key }}");
+  const btn = document.getElementById("buy-order-button");
+  const errBox = document.getElementById("error-box");
+
+  function showError(msg) {
+    errBox.textContent = msg || "Unexpected error";
+    errBox.classList.remove("d-none");
+  }
+
+  btn.addEventListener("click", async () => {
+    errBox.classList.add("d-none");
+    btn.disabled = true;
+    btn.textContent = "Creating checkout session...";
+
+    try {
+      const resp = await fetch("/buy-order/{{ order.id }}/", { method: "GET" });
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        showError(data.error || "Failed to create Stripe Checkout Session for order");
+        return;
+      }
+
+      const result = await stripe.redirectToCheckout({ sessionId: data.id });
+      if (result && result.error) showError(result.error.message);
+    } catch (e) {
+      showError(e?.message || String(e));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Pay order";
+    }
+  });
+</script>
+{% endblock %}
