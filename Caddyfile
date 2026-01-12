@@ -1,3 +1,7 @@
-:80 {
+stripedjango.ru, www.stripedjango.ru {
+    reverse_proxy 127.0.0.1:8001
+}
+
+http://83.166.246.61 {
     reverse_proxy 127.0.0.1:8001
 }
