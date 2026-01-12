@@ -16,17 +16,43 @@ services:
       timeout: 3s
       retries: 20
 
+  vpn:
+    image: qmcgaw/gluetun:latest
+    container_name: stripe-vpn
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    restart: unless-stopped
+    volumes:
+      - ./vpn:/gluetun
+    environment:
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: wireguard
+      WIREGUARD_CONFIG_FILE: /gluetun/VPNTYPE-PRA2.conf
+      FIREWALL_OUTBOUND_SUBNETS: "172.18.0.0/16"
+      TZ: Europe/Moscow
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- https://ipinfo.io/ip >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+
   web:
     build: .
     container_name: stripe-web
     restart: unless-stopped
     depends_on:
+      vpn:
+        condition: service_healthy
       db:
         condition: service_healthy
     env_file:
       - .env
-    expose:
-      - "8000"
     working_dir: /app/stripe_demo
     environment:
       DJANGO_DEBUG: "0"
@@ -36,8 +62,9 @@ services:
       bash -lc "
         uv run python manage.py migrate &&
         uv run python manage.py collectstatic --noinput &&
-        uv run gunicorn stripe_demo.wsgi:application --bind 0.0.0.0:8000
+        uv run gunicorn stripe_demo.wsgi:application --bind 0.0.0.0:8000 --timeout 120
       "
+    network_mode: "service:vpn"
 
   caddy:
     image: caddy:2-alpine
@@ -45,13 +72,11 @@ services:
     restart: unless-stopped
     depends_on:
       - web
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    network_mode: "service:vpn"
 
 volumes:
   pgdata:
