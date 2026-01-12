@@ -27,8 +27,6 @@ services:
       - .env
     expose:
       - "8000"
-    ports:
-      - "8000:8000"
     working_dir: /app/stripe_demo
     environment:
       DJANGO_DEBUG: "0"

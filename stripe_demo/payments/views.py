@@ -45,6 +45,7 @@ def buy_item(request: HttpRequest, id: int) -> JsonResponse:
         }],
         success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.DOMAIN}/cancel",
+        request_options={"timeout": 20},
     )
     return JsonResponse({"id": session.id})
 
@@ -117,6 +118,7 @@ def buy_order(request: HttpRequest, id: int) -> JsonResponse:
         line_items=line_items,
         success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.DOMAIN}/cancel",
+        request_options={"timeout": 20},
     )
     return JsonResponse({"id": session.id})
 
