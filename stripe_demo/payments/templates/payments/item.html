@@ -18,6 +18,12 @@
       try {
         const resp = await fetch("/buy/{{ item.id }}/");
 
+        if (!resp.ok) {
+          const data = await resp.json();
+          alert(data.error || "Buy failed");
+          return;
+        }
+
         let data;
         if (resp.headers.get("content-type")?.includes("application/json")) {
           data = await resp.json();
@@ -25,10 +31,6 @@
           throw new Error("Server returned non-JSON response");
         }
 
-        if (!resp.ok) {
-          alert(data.error || "Buy failed");
-          return;
-        }
 
         const result = await stripe.redirectToCheckout({
           sessionId: data.id,

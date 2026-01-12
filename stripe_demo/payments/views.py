@@ -27,26 +27,10 @@ def item_page(request: HttpRequest, id: int) -> HttpResponse:
 
 
 @require_GET
-def buy_item(request, id):
+def buy_item(request: HttpRequest, id: int) -> JsonResponse:
     item = get_object_or_404(Item, pk=id)
-
-    # берём ключи
-    if item.currency == "usd":
-        stripe.api_key = settings.STRIPE_SECRET_KEY_USD
-    elif item.currency == "eur":
-        stripe.api_key = settings.STRIPE_SECRET_KEY_EUR
-    else:
-        return JsonResponse(
-            {"error": "Unsupported currency"},
-            status=400
-        )
-
-    app_domain = os.getenv("APP_DOMAIN")
-    if not app_domain:
-        return JsonResponse(
-            {"error": "APP_DOMAIN is not set"},
-            status=500
-        )
+    keys = _get_stripe_keys_for_currency(item.currency)
+    stripe.api_key = keys["secret"]
 
     try:
         session = stripe.checkout.Session.create(
@@ -62,21 +46,15 @@ def buy_item(request, id):
                 },
                 "quantity": 1,
             }],
-            success_url=f"{app_domain}/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{app_domain}/cancel",
-            request_options={
-                "timeout": 20,
-                "max_network_retries": 0,
-            },
+            success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{settings.DOMAIN}/cancel",
+            request_options={"timeout": 20, "max_network_retries": 0},
         )
-
         return JsonResponse({"id": session.id})
 
     except Exception as e:
-        return JsonResponse(
-            {"error": str(e)},
-            status=500
-        )
+        # ВАЖНО: всегда JSON, чтобы фронт не ломался
+        return JsonResponse({"error": str(e)}, status=502)
 
 
 @require_GET
