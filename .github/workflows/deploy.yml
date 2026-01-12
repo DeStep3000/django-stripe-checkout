@@ -41,8 +41,15 @@ jobs:
             : > .env
             printf "DJANGO_SECRET_KEY=%s\n" "${{ secrets.DJANGO_SECRET_KEY }}" >> .env
             printf "DJANGO_DEBUG=0\n" >> .env
-            printf "DJANGO_ALLOWED_HOSTS=%s,localhost,127.0.0.1\n" "$SERVER_HOST" >> .env
-            printf "APP_DOMAIN=http://%s\n" "$SERVER_HOST" >> .env
+            APP_DOMAIN="${{ secrets.APP_DOMAIN }}"
+
+            APP_HOST="${APP_DOMAIN#http://}"
+            APP_HOST="${APP_HOST#https://}"
+            APP_HOST="${APP_HOST%%/*}"
+
+            printf "DJANGO_ALLOWED_HOSTS=%s,%s,localhost,127.0.0.1\n" "$SERVER_HOST" "$APP_HOST" >> .env
+
+            printf "APP_DOMAIN=%s\n" "$APP_DOMAIN" >> .env
 
             printf "\nPOSTGRES_DB=%s\n" "${{ secrets.POSTGRES_DB }}" >> .env
             printf "POSTGRES_USER=%s\n" "${{ secrets.POSTGRES_USER }}" >> .env
@@ -53,7 +60,7 @@ jobs:
             printf "STRIPE_PUBLIC_KEY_EUR=%s\n" "${{ secrets.STRIPE_PUBLIC_KEY_EUR }}" >> .env
             printf "STRIPE_SECRET_KEY_EUR=%s\n" "${{ secrets.STRIPE_SECRET_KEY_EUR }}" >> .env
 
-            printf "WIREGUARD_PRIVATE_KEY=%s\n" "${{ secrets.WIREGUARD_PRIVATE_KEY }}" >> .env
+            printf "\nWIREGUARD_PRIVATE_KEY=%s\n" "${{ secrets.WIREGUARD_PRIVATE_KEY }}" >> .env
             printf "WIREGUARD_ADDRESSES=%s\n" "${{ secrets.WIREGUARD_ADDRESSES }}" >> .env
             printf "WIREGUARD_PUBLIC_KEY=%s\n" "${{ secrets.WIREGUARD_PUBLIC_KEY }}" >> .env
             printf "WIREGUARD_ENDPOINT_IP=%s\n" "${{ secrets.WIREGUARD_ENDPOINT_IP }}" >> .env
