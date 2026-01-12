@@ -7,6 +7,11 @@ from django.views.decorators.http import require_GET
 from .models import Item, Order
 
 
+def home(request):
+    items = Item.objects.all().order_by("id")[:5]
+    return render(request, "payments/home.html", {"items": items})
+
+
 def _get_stripe_keys_for_currency(currency: str) -> dict:
     currency = (currency or "").lower()
     if currency not in settings.STRIPE_KEYS:
