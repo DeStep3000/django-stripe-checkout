@@ -53,6 +53,12 @@ jobs:
             printf "STRIPE_PUBLIC_KEY_EUR=%s\n" "${{ secrets.STRIPE_PUBLIC_KEY_EUR }}" >> .env
             printf "STRIPE_SECRET_KEY_EUR=%s\n" "${{ secrets.STRIPE_SECRET_KEY_EUR }}" >> .env
 
+            printf "WIREGUARD_PRIVATE_KEY=%s\n" "${{ secrets.WIREGUARD_PRIVATE_KEY }}" >> .env
+            printf "WIREGUARD_ADDRESSES=%s\n" "${{ secrets.WIREGUARD_ADDRESSES }}" >> .env
+            printf "WIREGUARD_PUBLIC_KEY=%s\n" "${{ secrets.WIREGUARD_PUBLIC_KEY }}" >> .env
+            printf "WIREGUARD_ENDPOINT_IP=%s\n" "${{ secrets.WIREGUARD_ENDPOINT_IP }}" >> .env
+            printf "WIREGUARD_ENDPOINT_PORT=%s\n" "${{ secrets.WIREGUARD_ENDPOINT_PORT }}" >> .env
+
             make up
 
             # --- Показать статус/логи (коротко) ---

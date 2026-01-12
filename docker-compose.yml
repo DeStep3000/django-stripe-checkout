@@ -24,23 +24,33 @@ services:
     devices:
       - /dev/net/tun
     restart: unless-stopped
-    volumes:
-      - ./vpn:/gluetun
+
+    env_file:
+      - .env
+
     environment:
       VPN_SERVICE_PROVIDER: custom
       VPN_TYPE: wireguard
-      WIREGUARD_CONFIG_FILE: /gluetun/VPNTYPE-PRA2.conf
+
+      WIREGUARD_PRIVATE_KEY: ${WIREGUARD_PRIVATE_KEY}
+      WIREGUARD_ADDRESSES: ${WIREGUARD_ADDRESSES}
+      WIREGUARD_PUBLIC_KEY: ${WIREGUARD_PUBLIC_KEY}
+      WIREGUARD_ENDPOINT_IP: ${WIREGUARD_ENDPOINT_IP}
+      WIREGUARD_ENDPOINT_PORT: ${WIREGUARD_ENDPOINT_PORT}
+
       FIREWALL_OUTBOUND_SUBNETS: "172.18.0.0/16"
       TZ: Europe/Moscow
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- https://ipinfo.io/ip >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8000:8000"
 
   web:
     build: .
