@@ -1,5 +1,3 @@
-import os
-
 import stripe
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -23,7 +21,11 @@ def _get_stripe_keys_for_currency(currency: str) -> dict:
 def item_page(request: HttpRequest, id: int) -> HttpResponse:
     item = get_object_or_404(Item, pk=id)
     keys = _get_stripe_keys_for_currency(item.currency)
-    return render(request, "payments/item.html", {"item": item, "stripe_public_key": keys["public"]})
+    return render(
+        request,
+        "payments/item.html",
+        {"item": item, "stripe_public_key": keys["public"]},
+    )
 
 
 @require_GET
@@ -48,12 +50,11 @@ def buy_item(request: HttpRequest, id: int) -> JsonResponse:
             }],
             success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{settings.DOMAIN}/cancel",
-            request_options={"timeout": 20, "max_network_retries": 0},
         )
         return JsonResponse({"id": session.id})
 
     except Exception as e:
-        # ВАЖНО: всегда JSON, чтобы фронт не ломался
+        # Всегда JSON, чтобы фронт мог показать alert
         return JsonResponse({"error": str(e)}, status=502)
 
 
@@ -61,12 +62,17 @@ def buy_item(request: HttpRequest, id: int) -> JsonResponse:
 def order_page(request: HttpRequest, id: int) -> HttpResponse:
     order = get_object_or_404(Order, pk=id)
 
-    # Для простоты: валюта заказа == валюта первого товара
+    # валюта заказа == валюта первого товара
     first = order.items.select_related("item").first()
     currency = first.item.currency if first else "usd"
     keys = _get_stripe_keys_for_currency(currency)
 
-    return render(request, "payments/order.html", {"order": order, "stripe_public_key": keys["public"], "currency": currency})
+    return render(
+        request,
+        "payments/order.html",
+        {"order": order,
+            "stripe_public_key": keys["public"], "currency": currency},
+    )
 
 
 @require_GET
@@ -79,7 +85,10 @@ def buy_order(request: HttpRequest, id: int) -> JsonResponse:
 
     currency = order_items[0].item.currency
     if any(oi.item.currency != currency for oi in order_items):
-        return JsonResponse({"error": "Mixed currencies in one order are not supported in this demo"}, status=400)
+        return JsonResponse(
+            {"error": "Mixed currencies in one order are not supported in this demo"},
+            status=400,
+        )
 
     keys = _get_stripe_keys_for_currency(currency)
     stripe.api_key = keys["secret"]
@@ -89,45 +98,48 @@ def buy_order(request: HttpRequest, id: int) -> JsonResponse:
         line_items.append({
             "price_data": {
                 "currency": oi.item.currency,
-                "unit_amount": oi.item.price,
-                "product_data": {"name": oi.item.name, "description": oi.item.description},
+                "unit_amount": oi.item.price,  # важно: int в минимальных единицах валюты
+                "product_data": {
+                    "name": oi.item.name,
+                    "description": oi.item.description,
+                },
             },
             "quantity": oi.quantity,
         })
 
-    # Вариант "просто": пересчитываем total и добавляем корректировку отдельной строкой.
-    # (Так в Checkout наглядно видно, что скидка/налог применены, но это демо.)
     subtotal = order.subtotal()
     total = order.total()
-    # может быть отрицательной (скидка) или положительной (налог)
     adjustment = total - subtotal
 
-    if adjustment != 0:
+    # Важно: в Checkout нельзя передать отрицательный unit_amount.
+    # Поэтому если adjustment < 0, уменьшаем первую позицию.
+    if adjustment > 0:
         line_items.append({
             "price_data": {
                 "currency": currency,
-                "unit_amount": adjustment if adjustment > 0 else -adjustment,
-                "product_data": {"name": "Tax/Discount adjustment" if adjustment > 0 else "Discount"},
+                "unit_amount": adjustment,
+                "product_data": {"name": "Tax/Discount adjustment"},
             },
             "quantity": 1,
         })
+    elif adjustment < 0:
+        discount_abs = -adjustment
+        first_item = line_items[0]
+        first_amount = first_item["price_data"]["unit_amount"]
+        first_item["price_data"]["unit_amount"] = max(
+            0, first_amount - discount_abs)
 
-        if adjustment < 0:
-            line_items.pop()
-            discount_abs = -adjustment
-            first = line_items[0]
-            first_amount = first["price_data"]["unit_amount"]
-            first["price_data"]["unit_amount"] = max(
-                0, first_amount - discount_abs)
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=line_items,
+            success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{settings.DOMAIN}/cancel",
+        )
+        return JsonResponse({"id": session.id})
 
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        line_items=line_items,
-        success_url=f"{settings.DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{settings.DOMAIN}/cancel",
-        request_options={"timeout": 20},
-    )
-    return JsonResponse({"id": session.id})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=502)
 
 
 @require_GET
